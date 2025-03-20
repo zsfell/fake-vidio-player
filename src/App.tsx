@@ -143,8 +143,18 @@ function App() {
   // Function to handle click events
   const handleClick = () => {
     alert("You clicked anywhere on the page!");
-    // You can replace this with any action you want
   };
+
+  const PlayIcon = ({ className }: { className: string }) => (
+    <svg
+      className={className}
+      fill="currentColor"
+      viewBox="0 0 24 24"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
 
   return (
     <div
@@ -179,12 +189,24 @@ function App() {
           </div>
 
           <div className="mt-12 relative">
-            <img
-              src="https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ghost-img.png"
-              alt="Ghost"
-              className="mx-auto w-64 h-64 object-cover rounded-lg shadow-xl"
-            />
-            <div className="absolute inset-0 bg-black opacity-20 rounded-lg"></div>
+            <div className="relative bg-black rounded-lg overflow-hidden shadow-xl aspect-video">
+              {isBlurred && (
+                <div className="absolute inset-0 backdrop-blur-md bg-black/50" />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <button
+                  onClick={() => alert("Play button clicked!")}
+                  className="bg-red-600 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-110 group"
+                >
+                  <PlayIcon className="w-20 h-20 text-white group-hover:text-gray-100" />
+                </button>
+              </div>
+              <img
+                src={thumbnailUrl}
+                alt="Video Thumbnail"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
         </section>
       </main>
