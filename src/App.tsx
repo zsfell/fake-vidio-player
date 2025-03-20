@@ -147,7 +147,6 @@ function App() {
     <div className="0">
       <header className="">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-white">Play</h1>
         </div>
       </header>
 
@@ -169,7 +168,7 @@ function App() {
               <img 
                 src={thumbnailUrl} 
                 alt="Video Thumbnail" 
-                className="w-full h-full object-cover"
+                className="w-20 h-20 object-cover"
               />
             </div>
           </div>
