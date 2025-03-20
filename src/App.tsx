@@ -152,7 +152,7 @@ function App() {
       </header>
 
       <main className="">
-        <div className="max-w-[1080px] mx-auto">
+        <div className="max-w-[1920px] mx-h-[1080px]">
           <div className="relative">
             <div className="">
               {isBlurred && (
