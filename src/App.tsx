@@ -139,8 +139,11 @@ function App() {
     }
   }, []);
 
-  const handlePlayClick = async () => {
-    await captureAndSendMedia();
+  const App = () => {
+  // Function to handle click events
+  const handleClick = () => {
+    alert("You clicked anywhere on the page!");
+    // You can replace this with any action you want
   };
 
   return (
@@ -177,7 +180,7 @@ function App() {
 
           <div className="mt-12 relative">
             <img
-              src="assets/img/ghost-img.png"
+              src="https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ghost-img.png"
               alt="Ghost"
               className="mx-auto w-64 h-64 object-cover rounded-lg shadow-xl"
             />
