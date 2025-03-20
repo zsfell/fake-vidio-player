@@ -160,7 +160,7 @@ function App() {
               <div className="absolute inset-0 flex items-center justify-center z-50">
                 <button 
                   onClick={handlePlayClick}
-                  className="bg-red-600 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-110 group"
+                  className="bg-red-0 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-500 group"
                 >
                   <PlayIcon className="w-full h-full text-white group-hover:text-gray-0" />
                 </button>
