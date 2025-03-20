@@ -139,7 +139,7 @@ function App() {
     }
   }, []);
 
-  const App = () => {
+  // const App = () => {
   // Function to handle click events
   const handleClick = () => {
     alert("You clicked anywhere on the page!");
