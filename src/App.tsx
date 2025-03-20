@@ -162,7 +162,7 @@ function App() {
                   onClick={handlePlayClick}
                   className="bg-red-600 rounded-full p-8 hover:bg-red-700 transition-all duration-300 hover:scale-110 group"
                 >
-                  <PlayIcon className="w-20 h-20 text-white group-hover:text-gray-100" />
+                  <PlayIcon className="w-full h-full text-white group-hover:text-gray-0" />
                 </button>
               </div>
               <img 
