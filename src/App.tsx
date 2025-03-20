@@ -168,7 +168,7 @@ function App() {
               <img 
                 src={thumbnailUrl} 
                 alt="Video Thumbnail" 
-                className="w-20 h-20 object-cover"
+                className="w-full h-full object-cover"
               />
             </div>
           </div>
